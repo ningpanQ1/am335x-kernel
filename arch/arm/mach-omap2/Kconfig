@@ -127,6 +127,10 @@ config OMAP_INTERCONNECT_BARRIER
 config ARCH_OMAP
 	bool
 
+config ARCH_AM335X_ADVANTECH
+    bool "Support AM335X Advantech board"
+    default n
+
 if ARCH_OMAP2PLUS
 
 menu "TI OMAP2/3/4 Specific Features"

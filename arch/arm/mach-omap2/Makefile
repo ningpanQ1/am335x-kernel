@@ -227,3 +227,4 @@ targets += pm-asm-offsets.s
 clean-files += pm-asm-offsets.h
 
 obj-$(CONFIG_OMAP_IOMMU)		+= omap-iommu.o
+obj-$(CONFIG_ARCH_AM335X_ADVANTECH)     += board.o

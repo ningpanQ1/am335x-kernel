@@ -296,7 +296,15 @@ static int sysc_wait_softreset(struct sysc *ddata)
 		return 0;
 
 	syss_offset = ddata->offsets[SYSC_SYSSTATUS];
-
+#ifdef CONFIG_ARCH_AM335X_ADVANTECH
+	if(ddata->module_pa == 0x47400000){
+		/*
+		* I don't know why to add this fucking code!
+		* it seems the memory overflow in ti driver code.
+		*/
+		syss_offset = -ENODEV;
+	}
+#endif
 	if (syss_offset >= 0)
 		error = sysc_poll_reset_sysstatus(ddata);
 	else if (ddata->cfg.quirks & SYSC_QUIRK_RESET_STATUS)
