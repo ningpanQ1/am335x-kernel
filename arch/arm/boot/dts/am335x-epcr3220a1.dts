@@ -50,7 +50,7 @@
 
 &am33xx_pinmux {
 	pinctrl-names = "default";
-	pinctrl-0 = <&gpio_keys_s0 &clkout2_pin>;
+	pinctrl-0 = <&wdt_pins_default>;
 
 	lcd_pins_default: lcd_pins_default {
 		pinctrl-single,pins = <
@@ -144,6 +144,13 @@
 		>;
 	};
 
+	i2c1_pins: pinmux_i2c1_pins {
+		pinctrl-single,pins = <
+			AM33XX_PADCONF(AM335X_PIN_UART0_RTSN, PIN_INPUT, MUX_MODE3)/* (E17) uart0_rtsn.I2C1_SCL */
+			AM33XX_PADCONF(AM335X_PIN_UART0_CTSN, PIN_INPUT, MUX_MODE3) /*(E18) uart0_ctsn.I2C1_SDA */
+		>;
+	};
+
 	uart0_pins: pinmux_uart0_pins {
 		pinctrl-single,pins = <
 			AM33XX_PADCONF(AM335X_PIN_UART0_RXD, PIN_INPUT_PULLUP, MUX_MODE0)
@@ -160,6 +167,31 @@
 	ecap2_pins: backlight_pins {
 		pinctrl-single,pins = <
 			AM33XX_PADCONF(AM335X_PIN_MCASP0_AHCLKR, 0x0, MUX_MODE4)	/* mcasp0_ahclkr.ecap2_in_pwm2_out */
+		>;
+	};
+
+	spi0_pins: pinmux_spi0_pins {
+		pinctrl-single,pins = <
+			AM33XX_PADCONF(AM335X_PIN_SPI0_SCLK, PIN_INPUT_PULLUP, MUX_MODE0)          /* sspi0_sclk.spi0_sclk */
+			AM33XX_PADCONF(AM335X_PIN_SPI0_D0, PIN_INPUT_PULLUP, MUX_MODE0)          /* spi0_d0.spi0_d0 */
+			AM33XX_PADCONF(AM335X_PIN_SPI0_D1, PIN_OUTPUT_PULLUP, MUX_MODE0)         /* spi0_d1.spi0_d1 */
+			AM33XX_PADCONF(AM335X_PIN_SPI0_CS0, PIN_OUTPUT_PULLUP, MUX_MODE0)         /* spi0_cs0.spi0_cs0 */
+		>;
+	};
+
+	spi1_pins: spi1_pins {
+		pinctrl-single,pins = <
+			AM33XX_PADCONF(AM335X_PIN_MII1_COL, PIN_INPUT, MUX_MODE2 ) /* (H16) gmii1_col.spi1_sclk */
+			AM33XX_PADCONF(AM335X_PIN_MII1_CRS, PIN_INPUT, MUX_MODE2 ) /* (H17) gmii1_crs.spi1_d0 */
+			AM33XX_PADCONF(AM335X_PIN_MII1_RX_ER, PIN_INPUT, MUX_MODE2 ) /* (J15) gmii1_rxer.spi1_d1 */
+			AM33XX_PADCONF(AM335X_PIN_RMII1_REF_CLK, PIN_INPUT, MUX_MODE2 ) /* (H18) rmii1_refclk.spi1_cs0 */
+		>;
+	};
+
+	wdt_pins_default: pinmux_wdt_pins_default {
+		pinctrl-single,pins = <
+			AM33XX_PADCONF(AM335X_PIN_GPMC_BEN0_CLE, PIN_OUTPUT_PULLDOWN, MUX_MODE7 ) /* (T6) gpmc_be0n_cle.gpio2[5] */
+			AM33XX_PADCONF(AM335X_PIN_GPMC_WEN, PIN_OUTPUT_PULLDOWN, MUX_MODE7)             /* gpmc_wen.gpio2_4 */
 		>;
 	};
 
@@ -350,6 +382,14 @@
 	};
 };
 
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_pins>;
+
+	status = "okay";
+	clock-frequency = <100000>;
+};
+
 /*******
 * usb
 *******/
@@ -458,6 +498,7 @@
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&cpsw_default>;
 	pinctrl-1 = <&cpsw_sleep>;
+	dual_emac;
 	status = "okay";
 };
 &davinci_mdio_sw {
@@ -581,6 +622,39 @@
 	status = "disabled";
 };
 
+&spi0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi0_pins>;
+	status = "okay";
+
+	flash: m25p80@0 {
+		compatible = "w25q32,m25p80";
+		spi-max-frequency = <12000000>;
+		reg = <0>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		/* MTD partition table.*/
+		partition@0 {
+		label = "BootLoader";
+		reg = <0x00000000 0x00400000>;
+		};
+	};
+};
+
+&spi1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi1_pins>;
+	status = "okay";
+	ti,spi-num-cs = <1>;
+	ti,pindir-d0-out-d1-in;
+	spidev@0{
+		compatible = "rohm,dh2228fv";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
+	};
+};
+
 /*********************************************** 
 * Timer_target:
 * timer1_target & timer2_target probe failed
@@ -612,6 +686,14 @@
 */
 &rtc {
     status = "disabled";
+};
+
+&gpio2 {
+	ti,no-reset-on-init;
+};
+
+&gpio3 {
+	ti,no-reset-on-init;
 };
 
 &wkup_m3_ipc {

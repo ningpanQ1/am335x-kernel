@@ -1818,6 +1818,12 @@ config BCM7038_WDT
 	  watchdog block, including some cable modem chips and DSL (63xx)
 	  chips.
 
+config MSP430_WDT
+	tristate "Advantech MSP430 System level Watchdog"
+	help
+	  System level Watchdog driver for the built-in hardware in Advantech ARM platform.
+	  Say 'Y or 'M' here to enable the driver.
+
 config IMGPDC_WDT
 	tristate "Imagination Technologies PDC Watchdog Timer"
 	depends on HAS_IOMEM
