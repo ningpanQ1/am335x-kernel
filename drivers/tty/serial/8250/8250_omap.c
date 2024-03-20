@@ -31,6 +31,10 @@
 
 #include "8250.h"
 
+#ifdef CONFIG_ARCH_AM335X_ADVANTECH
+#include <linux/platform_data/pca953x.h>
+#endif
+
 #define DEFAULT_CLK_SPEED	48000000
 
 #define UART_ERRATA_i202_MDR1_ACCESS	(1 << 0)
@@ -661,12 +665,69 @@ static irqreturn_t omap8250_irq(int irq, void *dev_id)
 	return IRQ_RETVAL(ret);
 }
 
+#ifdef CONFIG_ARCH_AM335X_ADVANTECH
+static void set_232_485_by_gpio(struct  uart_8250_port *up)
+{
+	unsigned int number,len;
+	int ret,rs485_flag;
+	const __be32 *gpio_number;
+
+	struct device_node *child_np;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state    *state;
+
+	struct device *dev = up->port.dev;
+	child_np = dev->of_node;
+	if(child_np){
+		gpio_number = of_get_property(child_np, "adv_rs485flag_gpio", &len);
+		if (gpio_number == NULL)
+			return;
+		number = be32_to_cpu(gpio_number[0]);
+		printk("set_232_485_by_gpio gpio_number is %d \n",number);
+		if( number < 256 ){
+			gpio_request(number, "RS232_422_485_Sel");
+			gpio_direction_input(number);
+			rs485_flag = gpio_get_value(number);
+		}else{
+			rs485_flag = adv_pca953x_get_rs485_value( (number % 32) -10);
+		}
+		printk("set_232_485_by_gpio rs485_flag is %d \n",rs485_flag);
+		if(rs485_flag) {
+			pinctrl = devm_pinctrl_get(up->port.dev);
+			if (!IS_ERR(pinctrl)) {
+				state = pinctrl_lookup_state(pinctrl,"rs485_mode");
+				if (!IS_ERR(state)){
+					ret = pinctrl_select_state(pinctrl, state);
+					if(ret){
+						dev_dbg(up->port.dev,"pinctrl_select_state rs485_mode failed!");
+					}
+					else {
+					}
+				} else
+				{
+					dev_dbg(up->port.dev, "pinctrl_lookup_state rs485_mode failed!");
+				}
+			} else
+			{
+				dev_dbg(up->port.dev, "devm_pinctrl_get rs485_mode failed!");
+			}
+			printk("set_232_485_by_gpio port %d is RS485\n",up->port.line);
+			up->port.rs485.flags |= SER_RS485_ENABLED;      //enable 485 mode
+		} else {
+			printk("set_232_485_by_gpio port %d is RS232\n",up->port.line);
+			up->port.rs485.flags &= ~SER_RS485_ENABLED;     //disable 485 mode
+		}
+	}
+}
+#endif
+
 static int omap_8250_startup(struct uart_port *port)
 {
 	struct uart_8250_port *up = up_to_u8250p(port);
 	struct omap8250_priv *priv = port->private_data;
 	int ret;
 
+	printk("omap_8250_startup %d \n", up->port.line);
 	if (priv->wakeirq) {
 		ret = dev_pm_set_dedicated_wake_irq(port->dev, priv->wakeirq);
 		if (ret)
@@ -716,6 +777,9 @@ static int omap_8250_startup(struct uart_port *port)
 	if (up->dma && !(priv->habit & UART_HAS_EFR2))
 		up->dma->rx_dma(up);
 
+#ifdef CONFIG_ARCH_AM335X_ADVANTECH
+	set_232_485_by_gpio(up);
+#endif
 	pm_runtime_mark_last_busy(port->dev);
 	pm_runtime_put_autosuspend(port->dev);
 	return 0;

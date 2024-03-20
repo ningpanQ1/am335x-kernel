@@ -10,6 +10,7 @@
 
 #include <linux/acpi.h>
 #include <linux/bitmap.h>
+#include <linux/gpio.h>
 #include <linux/gpio/driver.h>
 #include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
@@ -1052,6 +1053,116 @@ out:
 	return ret;
 }
 
+#ifdef CONFIG_ARCH_AM335X_ADVANTECH
+static int adv_gpio_init(struct pca953x_chip *chip)
+{
+	unsigned int dir,val,exp, dir_len, val_len,exp_len;
+	int i;
+	const __be32 *direction;
+	const __be32 *value;
+	const __be32 *export_flag;
+	struct device_node *np;
+
+	np = of_find_compatible_node(NULL,NULL,"nxp,pca9538");
+	if (np == NULL) {
+		np = of_find_compatible_node(NULL,NULL,"nxp,pca9555");
+		if (np == NULL) {
+			pr_err("Unable to find node\n");
+			return -ENOENT;
+		}
+	}
+
+	if (np) {
+		direction = of_get_property(np, "default_direction", &dir_len);
+		if (direction == NULL)
+			return -ENOENT;
+		value = of_get_property(np, "default_value", &val_len);
+		if (value == NULL)
+			return -ENOENT;
+		export_flag = of_get_property(np, "export_flag", &exp_len);
+
+		printk("adv_gpio_init dir_len-%d val_len-%d exp_len-%d \n", dir_len, val_len, exp_len);
+		if (value == NULL)
+			return -ENOENT;
+
+		dir_len = dir_len / sizeof(int);
+		val_len = val_len / sizeof(int);
+		exp_len = exp_len / sizeof(int);
+		printk("adv_gpio_init dir_len-%d val_len-%d exp_len-%d \n", dir_len, val_len, exp_len);
+		if(dir_len != val_len)
+			return -ENOENT;
+		if(exp_len != val_len)
+			return -ENOENT;
+
+		printk("adv_gpio_init chip->gpio_chip.base : %d \n", chip->gpio_chip.base);
+		for (i = 0; i < dir_len; i++) {
+			exp = be32_to_cpu(export_flag[i]);
+			dir = be32_to_cpu(direction[i]);
+			val = be32_to_cpu(value[i]);
+
+			gpio_request(chip->gpio_chip.base + i, "PCA-953XGPIO");
+			if(dir == 0){
+				gpio_direction_input(chip->gpio_chip.base + i);
+			}else{
+				gpio_direction_output(chip->gpio_chip.base + i, val);
+				printk("adv_gpio_init number:%d i:%d val:%d \n",chip->gpio_chip.base + i, i, val);
+			}
+			if(exp == 1)
+				gpio_export(chip->gpio_chip.base + i, 1);
+		}
+	}
+	return 0;
+}
+
+struct pca953x_chip *ext_chip;
+int adv_pca953x_get_rs485_value( unsigned off )
+{
+	/*pca953x_gpio_get_direction*/
+	u8 dirreg = ext_chip->recalc_addr(ext_chip, ext_chip->regs->direction, off);
+	u8 bit = BIT(off % BANK_SZ);
+	u32 reg_val;
+	int dir,ret;
+
+	mutex_lock(&ext_chip->i2c_lock);
+	ret = regmap_read(ext_chip->regmap, dirreg, &reg_val);
+	mutex_unlock(&ext_chip->i2c_lock);
+	if (ret < 0)
+		return ret;
+
+	if (reg_val & bit)
+		dir = GPIO_LINE_DIRECTION_IN;
+
+	dir = GPIO_LINE_DIRECTION_OUT;
+	printk("adv_pca953x_get_rs485_value dir : %d \n", dir);
+	/*pca953x_gpio_get_value*/
+	if( dir == GPIO_LINE_DIRECTION_IN ){
+		u8 inreg = ext_chip->recalc_addr(ext_chip, ext_chip->regs->input, off);
+		u8 bit = BIT(off % BANK_SZ);
+
+		mutex_lock(&ext_chip->i2c_lock);
+		ret = regmap_read(ext_chip->regmap, inreg, &reg_val);
+		mutex_unlock(&ext_chip->i2c_lock);
+		if (ret < 0)
+			return ret;
+
+		ret = !!(reg_val & bit);
+	}
+	else{
+		u8 outreg = ext_chip->recalc_addr(ext_chip, ext_chip->regs->output, off);
+		u8 bit = BIT(off % BANK_SZ);
+
+		mutex_lock(&ext_chip->i2c_lock);
+		ret = regmap_read(ext_chip->regmap, outreg, &reg_val);
+		mutex_unlock(&ext_chip->i2c_lock);
+		if (ret < 0)
+			return ret;
+
+		ret = !!(reg_val & bit);
+	}
+	return ret;
+}
+#endif
+
 static int pca953x_probe(struct i2c_client *client,
 			 const struct i2c_device_id *i2c_id)
 {
@@ -1194,6 +1305,11 @@ static int pca953x_probe(struct i2c_client *client,
 		if (ret < 0)
 			dev_warn(&client->dev, "setup failed, %d\n", ret);
 	}
+
+#ifdef CONFIG_ARCH_AM335X_ADVANTECH
+	adv_gpio_init(chip);
+	ext_chip = chip;
+#endif
 
 	return 0;
 
