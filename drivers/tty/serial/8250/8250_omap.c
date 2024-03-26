@@ -666,6 +666,17 @@ static irqreturn_t omap8250_irq(int irq, void *dev_id)
 }
 
 #ifdef CONFIG_ARCH_AM335X_ADVANTECH
+static int uart_adv_rs485_config(struct uart_port *port)
+{
+	struct serial_rs485 *rs485 = &port->rs485;
+	int ret;
+
+	ret = port->rs485_config(port, NULL, rs485);
+	if (ret)
+		memset(rs485, 0, sizeof(*rs485));
+
+	return ret;
+}
 static void set_232_485_by_gpio(struct  uart_8250_port *up)
 {
 	unsigned int number,len;
@@ -683,7 +694,6 @@ static void set_232_485_by_gpio(struct  uart_8250_port *up)
 		if (gpio_number == NULL)
 			return;
 		number = be32_to_cpu(gpio_number[0]);
-		printk("set_232_485_by_gpio gpio_number is %d \n",number);
 		if( number < 256 ){
 			gpio_request(number, "RS232_422_485_Sel");
 			gpio_direction_input(number);
@@ -691,7 +701,6 @@ static void set_232_485_by_gpio(struct  uart_8250_port *up)
 		}else{
 			rs485_flag = adv_pca953x_get_rs485_value( (number % 32) -10);
 		}
-		printk("set_232_485_by_gpio rs485_flag is %d \n",rs485_flag);
 		if(rs485_flag) {
 			pinctrl = devm_pinctrl_get(up->port.dev);
 			if (!IS_ERR(pinctrl)) {
@@ -713,6 +722,7 @@ static void set_232_485_by_gpio(struct  uart_8250_port *up)
 			}
 			printk("set_232_485_by_gpio port %d is RS485\n",up->port.line);
 			up->port.rs485.flags |= SER_RS485_ENABLED;      //enable 485 mode
+			uart_adv_rs485_config(&up->port);
 		} else {
 			printk("set_232_485_by_gpio port %d is RS232\n",up->port.line);
 			up->port.rs485.flags &= ~SER_RS485_ENABLED;     //disable 485 mode
@@ -727,7 +737,6 @@ static int omap_8250_startup(struct uart_port *port)
 	struct omap8250_priv *priv = port->private_data;
 	int ret;
 
-	printk("omap_8250_startup %d \n", up->port.line);
 	if (priv->wakeirq) {
 		ret = dev_pm_set_dedicated_wake_irq(port->dev, priv->wakeirq);
 		if (ret)
