@@ -1,5 +1,0 @@
-config MARVELL_WIFI_AW_CM389NF_ADVANTECH
-        tristate "Marvell AW-CM389NF WiFi-Ex Driver Add by Advantech"
-        depends on CFG80211
-
-
