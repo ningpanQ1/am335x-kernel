@@ -630,6 +630,14 @@
 	ti,no-reset-on-init;
 };
 
+&gpio2_target {
+	ti,no-reset-on-init;
+};
+
+&gpio3_target {
+	ti,no-reset-on-init;
+};
+
 /************
 *  eMMC 
 ************/
@@ -774,14 +782,6 @@
 */
 &rtc {
     status = "disabled";
-};
-
-&gpio2 {
-	ti,no-reset-on-init;
-};
-
-&gpio3 {
-	ti,no-reset-on-init;
 };
 
 &wkup_m3_ipc {
