@@ -2257,6 +2257,9 @@ static const struct usb_device_id option_ids[] = {
 	{ USB_DEVICE_AND_INTERFACE_INFO(SIERRA_VENDOR_ID, SIERRA_PRODUCT_EM9191, 0xff, 0xff, 0x30) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(SIERRA_VENDOR_ID, SIERRA_PRODUCT_EM9191, 0xff, 0, 0) },
 	{ USB_DEVICE_AND_INTERFACE_INFO(UNISOC_VENDOR_ID, TOZED_PRODUCT_LT70C, 0xff, 0, 0) },
+	#if defined(CONFIG_ARCH_AM335X_ADVANTECH)
+	{ USB_DEVICE(0x05C6, 0x9215)},/* Quectel EC20*/
+	#endif
 	{ } /* Terminating entry */
 };
 MODULE_DEVICE_TABLE(usb, option_ids);
@@ -2290,6 +2293,9 @@ static struct usb_serial_driver option_1port_device = {
 #ifdef CONFIG_PM
 	.suspend           = usb_wwan_suspend,
 	.resume            = usb_wwan_resume,
+#if defined(CONFIG_ARCH_AM335X_ADVANTECH)
+	.reset_resume      = usb_wwan_resume,
+#endif
 #endif
 };
 
