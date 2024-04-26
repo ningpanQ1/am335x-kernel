@@ -1441,7 +1441,7 @@
 			};
 		};
 
-		target-module@4c000 {			/* 0x4804c000, ap 32 36.0 */
+		gpio1_target: target-module@4c000 {			/* 0x4804c000, ap 32 36.0 */
 			compatible = "ti,sysc-omap2", "ti,sysc";
 			reg = <0x4c000 0x4>,
 			      <0x4c010 0x4>,
@@ -1844,7 +1844,7 @@
 			};
 		};
 
-		target-module@ac000 {			/* 0x481ac000, ap 54 38.0 */
+		gpio2_target: target-module@ac000 {			/* 0x481ac000, ap 54 38.0 */
 			compatible = "ti,sysc-omap2", "ti,sysc";
 			reg = <0xac000 0x4>,
 			      <0xac010 0x4>,
